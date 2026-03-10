@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-Time CI/CD Pipeline · Ravi Kiran</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,300&family=Orbitron:wght@400;700;900&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cyan:    #00e5ff;
+  --teal:    #1de9b6;
+  --pink:    #ff4081;
+  --red:     #ff1744;
+  --orange:  #ff9100;
+  --yellow:  #ffea00;
+  --green:   #00e676;
+  --purple:  #d500f9;
+  --blue:    #2979ff;
+  --bg:      #060b10;
+  --bg2:     #0a1520;
+  --bg3:     #0d1e30;
+  --text:    #e0eeff;
+  --muted:   rgba(160,210,255,0.45);
+  --border:  rgba(0,229,255,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  overflow-x: hidden;
+  cursor: default;
+  background-image:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(0,229,255,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 85% 80%, rgba(213,0,249,0.04) 0%, transparent 50%);
+}
+
+/* ── Grid overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Scanlines ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.12) 2px,
+    rgba(0,0,0,0.12) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 2rem; }
+
+/* ══════════════════════════════════════
+   HERO
+══════════════════════════════════════ */
+.hero {
+  padding: 5rem 0 3rem;
+  text-align: center;
+  position: relative;
+}
+
+.hero-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: var(--cyan);
+  border: 1px solid rgba(0,229,255,0.3);
+  padding: 0.3rem 1rem;
+  border-radius: 2px;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  animation: fadeSlideDown 0.6s ease both;
+}
+
+.hero h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(2rem, 6vw, 4rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(0,229,255,0.25);
+  animation: fadeSlideDown 0.7s ease 0.1s both;
+}
+
+.hero h1 span { color: var(--cyan); }
+
+.hero-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+  color: var(--muted);
+  margin-top: 1rem;
+  letter-spacing: 0.1em;
+  animation: fadeSlideDown 0.7s ease 0.2s both;
+}
+
+/* Badges */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 2rem;
+  animation: fadeSlideDown 0.7s ease 0.3s both;
+}
+.badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.badge.cyan   { color: var(--cyan);   border-color: rgba(0,229,255,0.4);   background: rgba(0,229,255,0.07); }
+.badge.teal   { color: var(--teal);   border-color: rgba(29,233,182,0.4);  background: rgba(29,233,182,0.07); }
+.badge.green  { color: var(--green);  border-color: rgba(0,230,118,0.4);   background: rgba(0,230,118,0.07); }
+.badge.orange { color: var(--orange); border-color: rgba(255,145,0,0.4);   background: rgba(255,145,0,0.07); }
+.badge.purple { color: var(--purple); border-color: rgba(213,0,249,0.4);   background: rgba(213,0,249,0.07); }
+.badge.blue   { color: var(--blue);   border-color: rgba(41,121,255,0.4);  background: rgba(41,121,255,0.07); }
+
+/* ══════════════════════════════════════
+   SECTION TITLES
+══════════════════════════════════════ */
+.section { padding: 4rem 0; border-top: 1px solid var(--border); }
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.section-title {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.section-desc {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 640px;
+  margin-bottom: 2.5rem;
+}
+
+/* ══════════════════════════════════════
+   OVERVIEW CARDS
+══════════════════════════════════════ */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.ov-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.4rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.ov-card:hover { border-color: var(--cyan); transform: translateY(-3px); }
+.ov-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent-color, var(--cyan));
+  box-shadow: 0 0 8px var(--accent-color, var(--cyan));
+}
+.ov-card .icon { font-size: 1.6rem; margin-bottom: 0.8rem; }
+.ov-card h3 { font-family: 'Orbitron', monospace; font-size: 0.75rem; font-weight: 700; color: #fff; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.ov-card p  { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--muted); line-height: 1.6; }
+
+/* ══════════════════════════════════════
+   PIPELINE DIAGRAM
+══════════════════════════════════════ */
+.diagram-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  padding: 2rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+}
+
+svg.pipeline { max-width: 500px; width: 100%; height: auto; overflow: visible; }
+
+.p-node rect, .p-node polygon { transition: filter 0.3s; }
+.p-node:hover rect, .p-node:hover polygon {
+  filter: drop-shadow(0 0 12px currentColor) drop-shadow(0 0 24px currentColor) !important;
+}
+.p-node text { pointer-events: none; }
+
+@keyframes flowDash    { to { stroke-dashoffset: -20; } }
+@keyframes flowDashRev { to { stroke-dashoffset:  20; } }
+@keyframes nodePulse   { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+.flow { fill: none; stroke-width: 1.5; }
+.flow.anim  { stroke-dasharray: 6 4; animation: flowDash 1.8s linear infinite; }
+.flow.rev   { stroke-dasharray: 5 5; animation: flowDashRev 1.8s linear infinite; }
+.flow.loop  { stroke-dasharray: 4 6; animation: flowDashRev 2.5s linear infinite; }
+.pulse-node { animation: nodePulse 2.2s ease-in-out infinite; }
+
+/* ══════════════════════════════════════
+   FLOW TABLE
+══════════════════════════════════════ */
+.flow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  margin-top: 1.5rem;
+}
+.flow-table thead tr {
+  border-bottom: 1px solid var(--cyan);
+}
+.flow-table thead th {
+  text-align: left;
+  padding: 0.7rem 1rem;
+  color: var(--cyan);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.flow-table tbody tr {
+  border-bottom: 1px solid rgba(0,229,255,0.06);
+  transition: background 0.2s;
+}
+.flow-table tbody tr:hover { background: rgba(0,229,255,0.04); }
+.flow-table td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+  color: var(--text);
+}
+.flow-table td:first-child { color: var(--cyan); font-weight: 700; }
+.flow-table td:last-child  { color: var(--teal); }
+.flow-table td.muted       { color: var(--muted); }
+
+/* ══════════════════════════════════════
+   TECH STACK
+══════════════════════════════════════ */
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.stack-group {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.2rem;
+}
+.stack-group h4 {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+.stack-group ul { list-style: none; }
+.stack-group li {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(0,229,255,0.05);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.stack-group li:last-child { border-bottom: none; }
+.stack-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px currentColor;
+}
+
+/* ══════════════════════════════════════
+   LOOP ARCHITECTURE
+══════════════════════════════════════ */
+.loop-diagram {
+  margin: 2rem 0;
+  padding: 2rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  line-height: 2;
+  color: var(--muted);
+  overflow-x: auto;
+  white-space: pre;
+}
+.loop-diagram .c { color: var(--cyan); }
+.loop-diagram .g { color: var(--green); }
+.loop-diagram .o { color: var(--orange); }
+.loop-diagram .p { color: var(--purple); }
+.loop-diagram .y { color: var(--yellow); }
+
+.loop-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+.loop-feat {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.loop-feat .check { color: var(--green); font-size: 0.9rem; flex-shrink: 0; margin-top: 0.1rem; }
+
+/* ══════════════════════════════════════
+   DESIGN DECISIONS
+══════════════════════════════════════ */
+.decision-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
+.decision {
+  background: var(--bg2);
+  border-left: 3px solid var(--cyan);
+  border-radius: 0 6px 6px 0;
+  padding: 1.2rem 1.4rem;
+  transition: border-color 0.3s;
+}
+.decision:hover { border-left-color: var(--teal); }
+.decision h4 {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+.decision p {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* ══════════════════════════════════════
+   FUTURE WORK
+══════════════════════════════════════ */
+.todo-list { list-style: none; margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.todo-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 0.8rem 1rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: border-color 0.2s, color 0.2s;
+}
+.todo-list li:hover { border-color: var(--yellow); color: var(--text); }
+.todo-box {
+  width: 14px; height: 14px;
+  border: 1.5px solid var(--yellow);
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ══════════════════════════════════════
+   RATING
+══════════════════════════════════════ */
+.rating-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.rating-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.2rem;
+  text-align: center;
+}
+.rating-card .score {
+  font-family: 'Orbitron', monospace;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--cyan);
+  text-shadow: 0 0 20px rgba(0,229,255,0.4);
+  line-height: 1;
+}
+.rating-card .score.overall {
+  font-size: 3rem;
+  color: var(--yellow);
+  text-shadow: 0 0 30px rgba(255,234,0,0.4);
+}
+.rating-card .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 0.5rem;
+}
+.stars { color: var(--yellow); font-size: 0.7rem; margin-top: 0.3rem; letter-spacing: 2px; }
+
+/* ══════════════════════════════════════
+   AUTHOR
+══════════════════════════════════════ */
+.author-card {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+.author-avatar {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #000;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(0,229,255,0.3);
+}
+.author-info h3 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.25rem;
+}
+.author-info .role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.7rem;
+}
+.author-links { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.author-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.author-link:hover { border-color: var(--cyan); color: var(--cyan); }
+.author-quote {
+  margin-top: 1.2rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--muted);
+  border-left: 2px solid var(--purple);
+  padding-left: 1rem;
+}
+
+/* ══════════════════════════════════════
+   FOOTER
+══════════════════════════════════════ */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 2rem 0;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  color: rgba(0,229,255,0.3);
+  letter-spacing: 0.15em;
+}
+
+/* ══════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════ */
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ══════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════ */
+@media (max-width: 600px) {
+  .wrap { padding: 0 1rem; }
+  .hero { padding: 3rem 0 2rem; }
+  .author-card { flex-direction: column; gap: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ HERO ═══════ -->
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-tag">⚡ DevOps · MLOps · Real-Time</div>
+    <h1>Real-Time<br><span>CI/CD Pipeline</span></h1>
+    <p class="hero-sub">Event-Driven &nbsp;·&nbsp; Zero-Downtime &nbsp;·&nbsp; Auto-Healing &nbsp;·&nbsp; Loop-Back Architecture</p>
+    <div class="badges">
+      <span class="badge cyan">✓ Build Passing</span>
+      <span class="badge teal">🚀 K8s Deploy</span>
+      <span class="badge green">📊 Grafana Monitored</span>
+      <span class="badge orange">⚡ Kafka Events</span>
+      <span class="badge purple">🔁 Auto-Rollback</span>
+      <span class="badge blue">MIT License</span>
+    </div>
+  </section>
+
+  <!-- ═══════ OVERVIEW ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 01 · Overview</div>
+    <h2 class="section-title">What Is This?</h2>
+    <p class="section-desc">A production-grade, event-driven CI/CD pipeline designed for real-time deployments with built-in failure recovery, auto-rollback, and continuous feedback loops. Built to handle MLOps-scale workloads — not just standard web apps.</p>
+    <div class="overview-grid">
+      <div class="ov-card" style="--accent-color:var(--cyan)">
+        <div class="icon">🔄</div>
+        <h3>Closed-Loop System</h3>
+        <p>Not linear — detects, deploys, monitors, patches, and re-deploys autonomously.</p>
+      </div>
+      <div class="ov-card" style="--accent-color:var(--teal)">
+        <div class="icon">⚡</div>
+        <h3>Event-Driven Core</h3>
+        <p>Kafka decouples deploy triggers from execution for async, replayable deployments.</p>
+      </div>
+      <div class="ov-card" style="--accent-color:var(--orange)">
+        <div class="icon">🔁</div>
+        <h3>Auto-Healing</h3>
+        <p>Health check failures trigger automatic rollback with default log capture.</p>
+      </div>
+      <div class="ov-card" style="--accent-color:var(--purple)">
+        <div class="icon">📡</div>
+        <h3>Live Feedback</h3>
+        <p>SSE streams test results and deploy status to dashboard in real-time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ PIPELINE DIAGRAM ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 02 · Architecture</div>
+    <h2 class="section-title">Pipeline Diagram</h2>
+    <p class="section-desc">Full flow from code push to feedback loop — including all branch paths, failure handling, and loop-back connections.</p>
+
+    <div class="diagram-wrap">
+      <svg class="pipeline" viewBox="0 0 420 930" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="ac" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#00e5ff"/></marker>
+          <marker id="ar" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#ff1744"/></marker>
+          <marker id="ao" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#ff9100"/></marker>
+          <marker id="ap" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#d500f9"/></marker>
+          <marker id="ag" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#00e676"/></marker>
+          <marker id="ay" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#ffea00"/></marker>
+        </defs>
+
+        <!-- LINES -->
+        <line class="flow anim" x1="210" y1="62" x2="210" y2="108" stroke="#00e5ff" marker-end="url(#ac)"/>
+        <text x="218" y="87" font-family="JetBrains Mono" font-size="7" fill="rgba(0,229,255,0.5)">webhook</text>
+
+        <line class="flow anim" x1="210" y1="148" x2="210" y2="192" stroke="#00e5ff" marker-end="url(#ac)"/>
+        <text x="218" y="172" font-family="JetBrains Mono" font-size="7" fill="rgba(0,229,255,0.5)">Yes</text>
+
+        <path class="flow rev" d="M 283 128 H 328" stroke="#ff1744" marker-end="url(#ar)"/>
+        <text x="290" y="121" font-family="JetBrains Mono" font-size="7" fill="rgba(255,23,68,0.7)">No</text>
+
+        <line class="flow anim" x1="210" y1="240" x2="210" y2="280" stroke="#00e5ff" marker-end="url(#ac)"/>
+        <line class="flow anim" x1="210" y1="318" x2="210" y2="358" stroke="#00e5ff" marker-end="url(#ac)"/>
+
+        <line class="flow anim" x1="210" y1="398" x2="210" y2="438" stroke="#00e5ff" marker-end="url(#ac)"/>
+        <text x="218" y="420" font-family="JetBrains Mono" font-size="7" fill="rgba(0,229,255,0.5)">Pass</text>
+
+        <path class="flow rev" d="M 143 378 H 96 V 606 H 80" stroke="#ff1744" marker-end="url(#ar)"/>
+        <text x="105" y="370" font-family="JetBrains Mono" font-size="7" fill="rgba(255,23,68,0.7)">Fail</text>
+
+        <line class="flow anim" x1="210" y1="478" x2="210" y2="520" stroke="#00e5ff" marker-end="url(#ac)"/>
+
+        <line class="flow anim" x1="210" y1="558" x2="210" y2="598" stroke="#00e5ff" marker-end="url(#ac)"/>
+        <text x="218" y="580" font-family="JetBrains Mono" font-size="7" fill="rgba(0,229,255,0.5)">Yes</text>
+
+        <path class="flow anim" d="M 280 538 H 318" stroke="#00e676" marker-end="url(#ag)"/>
+        <text x="282" y="531" font-family="JetBrains Mono" font-size="7" fill="rgba(0,230,118,0.6)">No</text>
+
+        <line class="flow anim" x1="210" y1="638" x2="210" y2="688" stroke="#ffea00" marker-end="url(#ay)"/>
+
+        <!-- Loop back purple -->
+        <path class="flow loop" d="M 55 616 V 216 H 120" stroke="#d500f9" marker-end="url(#ap)"/>
+        <path class="flow loop" d="M 120 712 H 28 V 216 H 120" stroke="#d500f9" opacity="0.4"/>
+
+        <!-- NODES -->
+        <!-- 1. Trigger -->
+        <g class="p-node pulse-node" style="color:#00e5ff; filter:drop-shadow(0 0 5px #00e5ff)">
+          <rect x="120" y="28" width="180" height="34" rx="4" fill="rgba(0,229,255,0.09)" stroke="#00e5ff" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="11" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="218" y="41">💡 Idea / Code Push</text>
+          <text font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,0.4)" text-anchor="middle" dominant-baseline="middle" x="210" y="54">Webhook Trigger</text>
+        </g>
+
+        <!-- 2. Real-Time Test? -->
+        <g class="p-node" style="color:#00e5ff; filter:drop-shadow(0 0 5px #00e5ff)">
+          <polygon points="210,108 283,128 210,148 137,128" fill="rgba(0,229,255,0.09)" stroke="#00e5ff" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="210" y="128">Real-Time Test?</text>
+        </g>
+
+        <!-- Reject -->
+        <g class="p-node" style="color:#ff1744; filter:drop-shadow(0 0 5px #ff1744)">
+          <rect x="316" y="108" width="92" height="40" rx="4" fill="rgba(255,23,68,0.1)" stroke="#ff1744" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="362" y="122">🚫 Reject /</text>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="362" y="137">Notify</text>
+        </g>
+
+        <!-- 3. Parallel Build -->
+        <g class="p-node" style="color:#00e5ff; filter:drop-shadow(0 0 5px #00e5ff)">
+          <rect x="100" y="192" width="220" height="48" rx="4" fill="rgba(0,229,255,0.09)" stroke="#00e5ff" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="218" y="210">⚡ Parallel Build &amp; Live Tests</text>
+          <text font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,0.4)" text-anchor="middle" dominant-baseline="middle" x="210" y="228">Jest + SSE · Loop Entry Point</text>
+        </g>
+
+        <!-- 4. Deploy Staging -->
+        <g class="p-node" style="color:#1de9b6; filter:drop-shadow(0 0 5px #1de9b6)">
+          <rect x="110" y="280" width="200" height="38" rx="4" fill="rgba(29,233,182,0.09)" stroke="#1de9b6" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="218" y="297">🚀 Deploy to Staging</text>
+          <text font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,0.4)" text-anchor="middle" dominant-baseline="middle" x="210" y="311">Zero-Downtime via K8s</text>
+        </g>
+
+        <!-- 5. Health Check? -->
+        <g class="p-node" style="color:#00e5ff; filter:drop-shadow(0 0 5px #00e5ff)">
+          <polygon points="210,358 283,378 210,398 137,378" fill="rgba(0,229,255,0.09)" stroke="#00e5ff" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="210" y="378">Health Check?</text>
+        </g>
+
+        <!-- 6. Live Demo -->
+        <g class="p-node" style="color:#2979ff; filter:drop-shadow(0 0 5px #2979ff)">
+          <rect x="100" y="438" width="220" height="40" rx="4" fill="rgba(41,121,255,0.1)" stroke="#2979ff" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="218" y="455">🔵 Live Demo / Prod Deploy</text>
+          <text font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,0.4)" text-anchor="middle" dominant-baseline="middle" x="210" y="470">Event-Driven via Kafka</text>
+        </g>
+
+        <!-- 7. Change Detected? -->
+        <g class="p-node" style="color:#00e5ff; filter:drop-shadow(0 0 5px #00e5ff)">
+          <polygon points="210,520 283,540 210,558 137,540" fill="rgba(0,229,255,0.09)" stroke="#00e5ff" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="210" y="540">Change Detected?</text>
+        </g>
+
+        <!-- Auto-Rollback -->
+        <g class="p-node" style="color:#ff9100; filter:drop-shadow(0 0 5px #ff9100)">
+          <rect x="14" y="596" width="112" height="40" rx="4" fill="rgba(255,145,0,0.1)" stroke="#ff9100" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="70" y="611">🔁 Auto-Rollback</text>
+          <text font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,0.4)" text-anchor="middle" dominant-baseline="middle" x="70" y="626">+ Default Log</text>
+        </g>
+
+        <!-- Monitor & Alert -->
+        <g class="p-node" style="color:#00e676; filter:drop-shadow(0 0 5px #00e676)">
+          <rect x="308" y="518" width="104" height="44" rx="4" fill="rgba(0,230,118,0.08)" stroke="#00e676" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="360" y="534">📊 Monitor &amp;</text>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="360" y="549">Alert</text>
+          <text font-family="JetBrains Mono" font-size="7" fill="rgba(255,255,255,0.3)" text-anchor="middle" dominant-baseline="middle" x="360" y="560">Grafana + PagerDuty</text>
+        </g>
+
+        <!-- Feature Add -->
+        <g class="p-node" style="color:#ffea00; filter:drop-shadow(0 0 5px #ffea00)">
+          <rect x="110" y="598" width="200" height="40" rx="4" fill="rgba(255,234,0,0.07)" stroke="#ffea00" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="218" y="615">🔧 Feature Add / Hotfix</text>
+          <text font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,0.4)" text-anchor="middle" dominant-baseline="middle" x="210" y="630">Real-Time · Auto-Merge</text>
+        </g>
+
+        <!-- Stream Feedback -->
+        <g class="p-node pulse-node" style="color:#d500f9; filter:drop-shadow(0 0 5px #d500f9)">
+          <rect x="110" y="688" width="200" height="40" rx="4" fill="rgba(213,0,249,0.08)" stroke="#d500f9" stroke-width="1.5"/>
+          <text font-family="JetBrains Mono" font-size="10" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" x="218" y="705">📡 Stream Feedback</text>
+          <text font-family="JetBrains Mono" font-size="8" fill="rgba(255,255,255,0.4)" text-anchor="middle" dominant-baseline="middle" x="210" y="720">to Dashboard · Loop Back</text>
+        </g>
+
+        <!-- legend -->
+        <g transform="translate(10, 770)">
+          <text font-family="JetBrains Mono" font-size="7" fill="rgba(0,229,255,0.4)" letter-spacing="2">LEGEND</text>
+          <circle cx="10" cy="20" r="4" fill="#00e5ff" opacity="0.7"/>
+          <text x="20" y="24" font-family="JetBrains Mono" font-size="7" fill="rgba(255,255,255,0.35)">Main Flow</text>
+          <circle cx="90" cy="20" r="4" fill="#ff1744" opacity="0.7"/>
+          <text x="100" y="24" font-family="JetBrains Mono" font-size="7" fill="rgba(255,255,255,0.35)">Fail / Reject</text>
+          <circle cx="185" cy="20" r="4" fill="#d500f9" opacity="0.7"/>
+          <text x="195" y="24" font-family="JetBrains Mono" font-size="7" fill="rgba(255,255,255,0.35)">Loop Back</text>
+          <circle cx="265" cy="20" r="4" fill="#00e676" opacity="0.7"/>
+          <text x="275" y="24" font-family="JetBrains Mono" font-size="7" fill="rgba(255,255,255,0.35)">Monitor</text>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ═══════ FLOW TABLE ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 03 · Flow Logic</div>
+    <h2 class="section-title">Stage-by-Stage Breakdown</h2>
+    <table class="flow-table">
+      <thead>
+        <tr><th>#</th><th>Stage</th><th>Description</th><th>Tool / Method</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>01</td><td>Webhook Trigger</td><td class="muted">Code push or idea initiates pipeline</td><td>GitHub Webhooks</td></tr>
+        <tr><td>02</td><td>Real-Time Test Gate</td><td class="muted">Decides if build should proceed</td><td>Feature flags / env check</td></tr>
+        <tr><td>03</td><td>Parallel Build &amp; Tests</td><td class="muted">Simultaneous build + test execution</td><td>Jest + SSE</td></tr>
+        <tr><td>04</td><td>Deploy to Staging</td><td class="muted">Zero-downtime rolling deploy</td><td>Kubernetes (K8s)</td></tr>
+        <tr><td>05</td><td>Health Check</td><td class="muted">Validates staging environment health</td><td>Liveness + Readiness probes</td></tr>
+        <tr><td>06</td><td>Live Demo / Prod Deploy</td><td class="muted">Event-driven production deployment</td><td>Apache Kafka</td></tr>
+        <tr><td>07</td><td>Change Detection</td><td class="muted">Checks if meaningful change occurred</td><td>Diff analysis</td></tr>
+        <tr><td>08</td><td>Monitor &amp; Alert</td><td class="muted">Observability on no-change path</td><td>Grafana + PagerDuty</td></tr>
+        <tr><td>09</td><td>Feature Add / Hotfix</td><td class="muted">Auto-merges small fixes in real-time</td><td>Git Auto-Merge</td></tr>
+        <tr><td>10</td><td>Stream Feedback</td><td class="muted">Streams results back to dashboard</td><td>WebSocket / SSE</td></tr>
+        <tr><td>11</td><td>Auto-Rollback</td><td class="muted">Reverts on health check failure</td><td>K8s Rollback + Logging</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════ TECH STACK ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 04 · Tech Stack</div>
+    <h2 class="section-title">Tools &amp; Technologies</h2>
+    <div class="stack-grid">
+      <div class="stack-group">
+        <h4 style="color:var(--cyan)">Build &amp; Test</h4>
+        <ul>
+          <li><span class="stack-dot" style="background:var(--cyan);color:var(--cyan)"></span>Jest — Unit + integration testing</li>
+          <li><span class="stack-dot" style="background:var(--cyan);color:var(--cyan)"></span>SSE — Live test result streaming</li>
+          <li><span class="stack-dot" style="background:var(--cyan);color:var(--cyan)"></span>GitHub Webhooks — Trigger layer</li>
+        </ul>
+      </div>
+      <div class="stack-group">
+        <h4 style="color:var(--teal)">Deployment</h4>
+        <ul>
+          <li><span class="stack-dot" style="background:var(--teal);color:var(--teal)"></span>Kubernetes — Zero-downtime rolling deploy</li>
+          <li><span class="stack-dot" style="background:var(--teal);color:var(--teal)"></span>Apache Kafka — Event-driven prod triggers</li>
+          <li><span class="stack-dot" style="background:var(--teal);color:var(--teal)"></span>K8s Rollback — Auto-healing on failure</li>
+        </ul>
+      </div>
+      <div class="stack-group">
+        <h4 style="color:var(--green)">Monitoring</h4>
+        <ul>
+          <li><span class="stack-dot" style="background:var(--green);color:var(--green)"></span>Grafana — Metrics &amp; dashboards</li>
+          <li><span class="stack-dot" style="background:var(--green);color:var(--green)"></span>PagerDuty — Alerting &amp; escalation</li>
+          <li><span class="stack-dot" style="background:var(--green);color:var(--green)"></span>Liveness Probes — Health validation</li>
+        </ul>
+      </div>
+      <div class="stack-group">
+        <h4 style="color:var(--purple)">Feedback Loop</h4>
+        <ul>
+          <li><span class="stack-dot" style="background:var(--purple);color:var(--purple)"></span>WebSocket / SSE — Real-time stream</li>
+          <li><span class="stack-dot" style="background:var(--purple);color:var(--purple)"></span>Git Auto-Merge — Hotfix integration</li>
+          <li><span class="stack-dot" style="background:var(--purple);color:var(--purple)"></span>Dashboard Loop — Continuous feedback</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ LOOP ARCHITECTURE ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 05 · Key Differentiator</div>
+    <h2 class="section-title">Loop Architecture</h2>
+    <p class="section-desc">Most CI/CD pipelines are linear — they end at deployment. This pipeline is circular.</p>
+
+    <div class="loop-diagram"><span class="c">Deploy</span> → <span class="g">Monitor</span> → <span class="c">Detect Change</span> → <span class="y">Fix</span> → <span class="p">Feedback</span> → <span class="c">Build (again)</span>
+         └──── <span class="o">Rollback if unhealthy</span> ────────────────┘</div>
+
+    <div class="loop-features">
+      <div class="loop-feat"><span class="check">✅</span>Self-heals on deploy failure via Auto-Rollback to last stable state</div>
+      <div class="loop-feat"><span class="check">✅</span>Continuously monitors post-deploy with Grafana + PagerDuty alerts</div>
+      <div class="loop-feat"><span class="check">✅</span>Merges small fixes without manual intervention using Git Auto-Merge</div>
+      <div class="loop-feat"><span class="check">✅</span>Streams all pipeline activity back for full observability via SSE</div>
+    </div>
+  </section>
+
+  <!-- ═══════ DESIGN DECISIONS ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 06 · Design Decisions</div>
+    <h2 class="section-title">Why These Choices?</h2>
+    <div class="decision-list">
+      <div class="decision">
+        <h4>Why Kafka for prod deploy?</h4>
+        <p>Kafka decouples the deploy trigger from the deploy execution — enabling async, event-sourced deployments that can be replayed or paused without pipeline restarts. Critical for MLOps-scale workloads.</p>
+      </div>
+      <div class="decision">
+        <h4>Why SSE alongside Jest?</h4>
+        <p>SSE streams test results in real-time to the dashboard as tests run — giving devs live feedback instead of waiting for a full run to complete. Reduces context-switch and feedback lag.</p>
+      </div>
+      <div class="decision">
+        <h4>Why the "Change Detected?" gate?</h4>
+        <p>Prevents unnecessary redeployments on zero-diff pushes (e.g., doc-only commits), routing them to monitoring-only mode instead. Saves compute and reduces deploy noise.</p>
+      </div>
+      <div class="decision">
+        <h4>Why K8s for staging deploy?</h4>
+        <p>Rolling deployments with liveness + readiness probes allow zero-downtime validation. If a pod fails health checks, K8s auto-reverts — which feeds directly into our rollback loop.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ FUTURE WORK ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 07 · Roadmap</div>
+    <h2 class="section-title">Known Limitations &amp; Future Work</h2>
+    <ul class="todo-list">
+      <li><div class="todo-box"></div>Circuit breaker on Auto-Rollback loop — add max retry count to prevent infinite rollback cycles</li>
+      <li><div class="todo-box"></div>Secrets management layer — integrate HashiCorp Vault or AWS Secrets Manager</li>
+      <li><div class="todo-box"></div>Multi-environment matrix — extend to dev / UAT / canary environments</li>
+      <li><div class="todo-box"></div>SBOM generation — add software bill of materials at build stage for supply chain security</li>
+      <li><div class="todo-box"></div>Stream Feedback schema — formalize what gets streamed (logs vs metrics vs alerts)</li>
+      <li><div class="todo-box"></div>Distributed tracing — integrate OpenTelemetry across all pipeline stages</li>
+    </ul>
+  </section>
+
+  <!-- ═══════ RATING ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 08 · Evaluation</div>
+    <h2 class="section-title">Pipeline Rating</h2>
+    <div class="rating-grid">
+      <div class="rating-card">
+        <div class="score">8<span style="font-size:1.2rem">/10</span></div>
+        <div class="stars">★★★★☆</div>
+        <div class="label">Architecture Design</div>
+      </div>
+      <div class="rating-card">
+        <div class="score">9<span style="font-size:1.2rem">/10</span></div>
+        <div class="stars">★★★★★</div>
+        <div class="label">Tool Stack Relevance</div>
+      </div>
+      <div class="rating-card">
+        <div class="score">7<span style="font-size:1.2rem">/10</span></div>
+        <div class="stars">★★★★☆</div>
+        <div class="label">Completeness</div>
+      </div>
+      <div class="rating-card">
+        <div class="score">7.5<span style="font-size:1rem">/10</span></div>
+        <div class="stars">★★★★☆</div>
+        <div class="label">Originality</div>
+      </div>
+      <div class="rating-card" style="border-color:rgba(255,234,0,0.3)">
+        <div class="score overall">8.1</div>
+        <div class="stars">★★★★☆</div>
+        <div class="label">Overall Score</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ AUTHOR ═══════ -->
+  <section class="section reveal">
+    <div class="section-label">// 09 · Author</div>
+    <h2 class="section-title">Built By</h2>
+    <div class="author-card">
+      <div class="author-avatar">RK</div>
+      <div class="author-info">
+        <h3>Ravi Kiran</h3>
+        <div class="role">Gen AI Engineer &amp; AI Research Analyst · Hyderabad, India</div>
+        <div class="author-links">
+          <a class="author-link" href="https://linkedin.com/in/ravikiran" target="_blank">🔗 LinkedIn</a>
+          <a class="author-link" href="https://educatorias.blogspot.com" target="_blank">🌐 Educator IAS</a>
+          <a class="author-link" href="#">📁 Portfolio</a>
+          <a class="author-link" href="#">✉ Contact</a>
+        </div>
+      </div>
+    </div>
+    <blockquote class="author-quote">"Building autonomous systems that think in loops, not lines."</blockquote>
+  </section>
+
+</div>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer>
+  <div class="wrap">
+    ⚡ Real-Time CI/CD Pipeline &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Built by Ravi Kiran &nbsp;·&nbsp; 2025
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
